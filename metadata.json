@@ -1,0 +1,7 @@
+{
+  "name": "Verdict AI - Legal Intelligence System",
+  "description": "An elite, enterprise-grade legal intelligence platform for the Judiciary, Lawyers, and the Public.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

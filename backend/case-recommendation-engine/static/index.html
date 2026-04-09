@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Legum AI — Case Recommendation Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:      #0D1117;
+      --card:    #161B22;
+      --border:  #30363D;
+      --muted:   #8B949E;
+      --text:    #E6EDF3;
+      --teal:    #1D9E75;
+      --teal-lt: #E1F5EE;
+      --purple:  #7F77DD;
+      --amber:   #EF9F27;
+      --red:     #E24B4A;
+      --radius:  10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    .header { display: flex; align-items: center; gap: 14px; padding: 1.2rem 2rem; border-bottom: 1px solid var(--border); background: var(--card); }
+    .logo-mark { width: 36px; height: 36px; background: var(--teal); border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-mark svg { width: 20px; height: 20px; }
+    .logo-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--text); }
+    .logo-sub { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+    .badge { margin-left: auto; font-size: 11px; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--teal); color: var(--teal); letter-spacing: .04em; }
+
+    /* ── Layout ── */
+    .main { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── Upload panel ── */
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.75rem; margin-bottom: 1.5rem; }
+    .panel-title { font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 1.2rem; }
+
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.5rem 1rem; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+    .drop-zone:hover, .drop-zone.drag { border-color: var(--teal); background: rgba(29,158,117,.05); }
+    .drop-icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(29,158,117,.12); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+    .drop-icon svg { width: 22px; height: 22px; stroke: var(--teal); }
+    .drop-title { font-size: .95rem; font-weight: 500; margin-bottom: 4px; }
+    .drop-sub { font-size: .8rem; color: var(--muted); }
+    #file-input { display: none; }
+
+    .or-sep { display: flex; align-items: center; gap: 12px; margin: 1.2rem 0; }
+    .or-line { flex: 1; height: 1px; background: var(--border); }
+    .or-text { font-size: .75rem; color: var(--muted); }
+
+    textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: .875rem; resize: vertical; min-height: 120px; outline: none; transition: border-color .2s; }
+    textarea:focus { border-color: var(--teal); }
+
+    .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: .875rem; outline: none; }
+
+    .btn-primary { width: 100%; margin-top: 14px; padding: 11px; border: none; border-radius: 8px; background: var(--teal); color: #fff; font-family: 'DM Sans', sans-serif; font-size: .9rem; font-weight: 500; cursor: pointer; transition: opacity .2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-primary:hover { opacity: .87; }
+    .btn-primary:disabled { opacity: .45; cursor: default; }
+
+    .file-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(29,158,117,.12); color: var(--teal); border-radius: 6px; padding: 4px 10px; font-size: .78rem; margin-top: 10px; }
+    .error { color: var(--red); font-size: .82rem; margin-top: 8px; }
+
+    /* ── Spinner ── */
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.25); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ── */
+    #results { display: none; }
+    .summary-bar { border-left: 3px solid var(--teal); padding: 14px 18px; background: rgba(29,158,117,.06); border-radius: 0 8px 8px 0; margin-bottom: 1.5rem; }
+    .summary-bar p { font-size: .88rem; color: #C9D1D9; line-height: 1.65; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
+    .stat-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .stat-value { font-size: 1.4rem; font-weight: 500; }
+    .stat-sub { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+    .risk-high { color: var(--red); }
+    .risk-medium { color: var(--amber); }
+    .risk-low { color: var(--teal); }
+
+    .section-head { font-size: .7rem; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 1.5rem 0 10px; display: flex; align-items: center; gap: 8px; }
+    .section-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .filter-btn { font-size: .75rem; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all .15s; font-family: 'DM Sans', sans-serif; }
+    .filter-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+    .result-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 10px; transition: border-color .2s; }
+    .result-card:hover { border-color: rgba(29,158,117,.4); }
+    .result-card-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .result-icon { width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .result-title { font-size: .875rem; font-weight: 500; color: var(--text); }
+    .result-meta { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+    .result-body { padding: 12px 14px; }
+    .result-desc { font-size: .82rem; color: #C9D1D9; line-height: 1.6; margin-bottom: 10px; }
+    .facts-box { font-size: .78rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); background: var(--bg); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; line-height: 1.6; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    .tag { font-size: .7rem; padding: 2px 8px; border-radius: 20px; }
+    .tag-teal { background: rgba(29,158,117,.12); color: #5DCAA5; border: 1px solid rgba(29,158,117,.25); }
+    .tag-purple { background: rgba(127,119,221,.12); color: #AFA9EC; border: 1px solid rgba(127,119,221,.25); }
+    .tag-amber { background: rgba(239,159,39,.1); color: #FAC775; border: 1px solid rgba(239,159,39,.2); }
+
+    .relevance-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .relevance-label { font-size: .72rem; color: var(--muted); width: 70px; flex-shrink: 0; }
+    .relevance-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .relevance-fill { height: 100%; border-radius: 2px; background: var(--teal); }
+    .relevance-pct { font-size: .72rem; color: var(--muted); width: 38px; text-align: right; }
+
+    .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-link { font-size: .75rem; color: var(--teal); text-decoration: none; padding: 5px 10px; border: 1px solid rgba(29,158,117,.4); border-radius: 6px; transition: background .15s; cursor: pointer; background: transparent; font-family: 'DM Sans', sans-serif; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-link:hover { background: rgba(29,158,117,.1); }
+
+    .risk-badge { display: inline-flex; align-items: center; gap: 4px; font-size: .72rem; padding: 2px 8px; border-radius: 20px; font-weight: 500; margin-left: auto; }
+    .badge-high { background: rgba(226,75,74,.12); color: #F09595; border: 1px solid rgba(226,75,74,.25); }
+    .badge-medium { background: rgba(239,159,39,.1); color: #FAC775; border: 1px solid rgba(239,159,39,.2); }
+    .badge-low { background: rgba(29,158,117,.1); color: #5DCAA5; border: 1px solid rgba(29,158,117,.2); }
+
+    .models-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .model-badge { font-size: .7rem; padding: 2px 8px; border-radius: 4px; background: rgba(127,119,221,.1); color: var(--purple); border: 1px solid rgba(127,119,221,.2); font-family: 'JetBrains Mono', monospace; }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .meta-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-mark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 6h18M3 12h18M3 18h10"/><circle cx="19" cy="18" r="3"/>
+    </svg>
+  </div>
+  <div>
+    <div class="logo-title">Legum AI</div>
+    <div class="logo-sub">Case Recommendation Engine</div>
+  </div>
+  <div class="badge">Samsung AI Training Program</div>
+</div>
+
+<div class="main">
+
+  <!-- Upload Panel -->
+  <div class="panel">
+    <div class="panel-title">Upload or paste case details</div>
+
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+          <polyline points="16 12 12 8 8 12"/><line x1="12" y1="8" x2="12" y2="20"/>
+        </svg>
+      </div>
+      <div class="drop-title">Drop case file here</div>
+      <div class="drop-sub">PDF, DOCX, or TXT · max 10 MB</div>
+      <div id="file-pill" style="display:none"></div>
+    </div>
+    <input type="file" id="file-input" accept=".pdf,.docx,.doc,.txt"/>
+
+    <div class="or-sep"><div class="or-line"></div><span class="or-text">or paste case text</span><div class="or-line"></div></div>
+
+    <textarea id="case-text" placeholder="Paste case summary, charges, facts, or relevant legal details here…"></textarea>
+
+    <div class="meta-row">
+      <select id="case-type">
+        <option value="">Case type (optional)</option>
+        <option value="criminal">Criminal</option>
+        <option value="civil">Civil</option>
+        <option value="family">Family law</option>
+        <option value="corporate">Corporate / commercial</option>
+        <option value="constitutional">Constitutional</option>
+        <option value="labor">Labour & employment</option>
+        <option value="property">Property / land</option>
+      </select>
+      <select id="jurisdiction">
+        <option value="">Jurisdiction (optional)</option>
+        <option value="pakistan-federal">Pakistan — Federal</option>
+        <option value="pakistan-sindh">Pakistan — Sindh</option>
+        <option value="pakistan-punjab">Pakistan — Punjab</option>
+        <option value="pakistan-kpk">Pakistan — KPK</option>
+        <option value="pakistan-balochistan">Pakistan — Balochistan</option>
+      </select>
+    </div>
+
+    <button class="btn-primary" id="analyze-btn" onclick="analyze()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      Analyze &amp; find resources
+    </button>
+    <div class="error" id="error-msg" style="display:none"></div>
+  </div>
+
+  <!-- Results Section -->
+  <div id="results">
+
+    <!-- Summary -->
+    <div class="summary-bar"><p id="summary-text"></p></div>
+
+    <!-- Stats grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Case type</div>
+        <div class="stat-value" id="stat-type" style="font-size:1rem;color:var(--teal)"></div>
+        <div class="stat-sub" id="stat-type-conf"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Risk level</div>
+        <div class="stat-value" id="stat-risk"></div>
+        <div class="stat-sub" id="stat-risk-conf"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Likely outcome</div>
+        <div class="stat-value" id="stat-outcome" style="font-size:1rem"></div>
+        <div class="stat-sub" id="stat-outcome-conf"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Jurisdiction</div>
+        <div class="stat-value" id="stat-jur" style="font-size:.95rem;color:var(--purple)"></div>
+        <div class="stat-sub" id="stat-proc-time"></div>
+      </div>
+    </div>
+
+    <!-- Risk factors -->
+    <div id="risk-factors-section">
+      <div class="section-head">Risk factors</div>
+      <div id="risk-factors-list"></div>
+    </div>
+
+    <!-- Similar cases -->
+    <div class="section-head">Similar cases</div>
+    <div class="filters" id="case-filters"></div>
+    <div id="cases-list"></div>
+
+    <!-- Resources -->
+    <div class="section-head">Recommended resources</div>
+    <div class="filters" id="res-filters"></div>
+    <div id="resources-list"></div>
+
+    <!-- Models used -->
+    <div class="section-head">Models used</div>
+    <div class="models-row" id="models-row"></div>
+
+  </div>
+</div>
+
+<script>
+  // ── File drag & drop ──────────────────────────────────────
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  let selectedFile = null;
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag');
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+  function setFile(f) {
+    selectedFile = f;
+    const pill = document.getElementById('file-pill');
+    pill.innerHTML = `<span class="file-pill">📄 ${f.name} (${(f.size/1024).toFixed(1)} KB)</span>`;
+    pill.style.display = 'block';
+  }
+
+  // ── Main analysis ─────────────────────────────────────────
+  async function analyze() {
+    const text = document.getElementById('case-text').value.trim();
+    const caseType = document.getElementById('case-type').value;
+    const jurisdiction = document.getElementById('jurisdiction').value;
+    const errEl = document.getElementById('error-msg');
+    errEl.style.display = 'none';
+
+    if (!text && !selectedFile) {
+      errEl.textContent = 'Please upload a file or paste case details.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('analyze-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Analyzing…';
+    document.getElementById('results').style.display = 'none';
+
+    try {
+      let data;
+      if (selectedFile) {
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        const res = await fetch('/api/analyze-file', { method: 'POST', body: fd });
+        data = await res.json();
+      } else {
+        const res = await fetch('/api/analyze-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, caseType, jurisdiction }),
+        });
+        data = await res.json();
+      }
+
+      if (data.error) throw new Error(data.error);
+      renderResults(data);
+    } catch (e) {
+      errEl.textContent = e.message || 'Analysis failed. Is the Flask server running?';
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Analyze &amp; find resources';
+    }
+  }
+
+  // ── Render results ────────────────────────────────────────
+  let _allCases = [], _allResources = [];
+
+  function renderResults(d) {
+    // Summary
+    document.getElementById('summary-text').textContent = d.input_snippet || '';
+
+    // Stats
+    document.getElementById('stat-type').textContent = (d.detected_case_type || '').toUpperCase();
+    document.getElementById('stat-type-conf').textContent = pct(d.case_type_confidence) + ' confidence';
+    const riskEl = document.getElementById('stat-risk');
+    riskEl.textContent = (d.risk_level || '').toUpperCase();
+    riskEl.className = 'stat-value risk-' + (d.risk_level || 'medium');
+    document.getElementById('stat-risk-conf').textContent = pct(d.risk_confidence) + ' confidence';
+    document.getElementById('stat-outcome').textContent = (d.likely_outcome || '').toUpperCase();
+    document.getElementById('stat-outcome-conf').textContent = pct(d.outcome_confidence) + ' confidence';
+    document.getElementById('stat-jur').textContent = (d.detected_jurisdiction || '—').toUpperCase();
+    document.getElementById('stat-proc-time').textContent = d.processing_time_sec + 's processing';
+
+    // Risk factors
+    const rfList = document.getElementById('risk-factors-list');
+    rfList.innerHTML = (d.risk_factors || []).map(f =>
+      `<div style="font-size:.82rem;color:#C9D1D9;padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:baseline">
+        <span style="color:var(--red);flex-shrink:0">•</span>${f}</div>`
+    ).join('');
+
+    // Cases
+    _allCases = d.similar_cases || [];
+    renderCases(_allCases);
+
+    const caseTypes = [...new Set(_allCases.map(c => c.retrieval_method))];
+    const cF = document.getElementById('case-filters');
+    cF.innerHTML = `<button class="filter-btn active" onclick="filterCases('all',this)">All</button>` +
+      caseTypes.map(t => `<button class="filter-btn" onclick="filterCases('${t}',this)">${t}</button>`).join('');
+
+    // Resources
+    _allResources = d.recommended_resources || [];
+    renderResources(_allResources);
+
+    const resTypes = [...new Set(_allResources.map(r => r.resource_type))];
+    const rF = document.getElementById('res-filters');
+    rF.innerHTML = `<button class="filter-btn active" onclick="filterRes('all',this)">All</button>` +
+      resTypes.map(t => `<button class="filter-btn" onclick="filterRes('${t}',this)">${capitalize(t)}</button>`).join('');
+
+    // Models
+    document.getElementById('models-row').innerHTML = (d.models_used || [])
+      .map(m => `<span class="model-badge">${m}</span>`).join('');
+
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function renderCases(cases) {
+    document.getElementById('cases-list').innerHTML = cases.length === 0
+      ? '<div style="color:var(--muted);font-size:.85rem;padding:1rem">No similar cases found.</div>'
+      : cases.map(c => `
+        <div class="result-card">
+          <div class="result-card-header">
+            <div class="result-icon" style="background:rgba(29,158,117,.12)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="result-title">${c.title}</div>
+              <div class="result-meta">${c.court} · ${c.year} · ${c.citation}</div>
+            </div>
+            <span class="risk-badge badge-${c.risk_level}">${(c.risk_level||'').toUpperCase()}</span>
+          </div>
+          <div class="result-body">
+            <div class="facts-box">${c.facts_snippet || ''}</div>
+            <div class="tag-row">
+              ${(c.statutes||[]).slice(0,3).map((s,i)=>`<span class="tag ${i%2===0?'tag-teal':'tag-purple'}">${s.length>40?s.slice(0,40)+'…':s}</span>`).join('')}
+              <span class="tag tag-amber">${capitalize(c.outcome)}</span>
+            </div>
+            <div class="relevance-row">
+              <span class="relevance-label">Relevance</span>
+              <div class="relevance-track"><div class="relevance-fill" style="width:${c.relevance_score}%"></div></div>
+              <span class="relevance-pct">${c.relevance_score}%</span>
+            </div>
+            <div class="result-meta" style="margin-bottom:10px">via ${c.retrieval_method}</div>
+            <div class="action-row">
+              <a class="btn-link" href="${c.url}" target="_blank">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Open case
+              </a>
+            </div>
+          </div>
+        </div>`).join('');
+  }
+
+  function renderResources(resources) {
+    const typeIcons = {
+      statute: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
+      form: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8',
+      guideline: 'M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zM12 8v4M12 16h.01',
+      article: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z',
+    };
+    const typeColors = { statute: 'teal', form: 'amber', guideline: 'purple', article: 'purple' };
+
+    document.getElementById('resources-list').innerHTML = resources.length === 0
+      ? '<div style="color:var(--muted);font-size:.85rem;padding:1rem">No resources found.</div>'
+      : resources.map(r => {
+          const col = typeColors[r.resource_type] || 'teal';
+          const icon = typeIcons[r.resource_type] || typeIcons.article;
+          return `
+            <div class="result-card">
+              <div class="result-card-header">
+                <div class="result-icon" style="background:rgba(29,158,117,.1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--${col})" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${icon}"/></svg>
+                </div>
+                <div>
+                  <div class="result-title">${r.title}</div>
+                  <div class="result-meta">${capitalize(r.resource_type)}</div>
+                </div>
+              </div>
+              <div class="result-body">
+                <div class="result-desc">${r.description}</div>
+                <div class="tag-row">${(r.tags||[]).slice(0,4).map((t,i)=>`<span class="tag ${i%2===0?'tag-teal':'tag-purple'}">${t}</span>`).join('')}</div>
+                <div class="relevance-row">
+                  <span class="relevance-label">Relevance</span>
+                  <div class="relevance-track"><div class="relevance-fill" style="width:${r.relevance_score}%"></div></div>
+                  <span class="relevance-pct">${r.relevance_score}%</span>
+                </div>
+                <div class="action-row">
+                  <a class="btn-link" href="${r.url}" target="_blank">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Open resource
+                  </a>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+  }
+
+  function filterCases(method, btn) {
+    document.querySelectorAll('#case-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderCases(method === 'all' ? _allCases : _allCases.filter(c => c.retrieval_method === method));
+  }
+
+  function filterRes(type, btn) {
+    document.querySelectorAll('#res-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderResources(type === 'all' ? _allResources : _allResources.filter(r => r.resource_type === type));
+  }
+
+  function pct(v) { return v != null ? Math.round(v * 100) + '%' : '—'; }
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+</script>
+</body>
+</html>
